@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Wallet, Activity, Image, Loader2, ExternalLink, Copy, Check, Users, Globe, Twitter, Github, Calendar, Zap, Coins, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { Search, Wallet, Activity, Image, Loader2, ExternalLink, Copy, Check, Users, Globe, Twitter, Github, Coins, ArrowUpRight, ArrowDownLeft, BarChart3, CreditCard, RefreshCw } from "lucide-react";
 
 interface ChainActivity {
   chain: string;
@@ -18,6 +18,7 @@ interface TokenHolding {
 
 interface NFTHolding {
   name: string;
+  symbol?: string;
   count: number;
 }
 
@@ -53,6 +54,12 @@ interface WalletProfile {
   defiProtocols: string[];
 }
 
+// Main tabs
+type MainTab = "transactions" | "token-transfers" | "nft-transfers" | "analytics" | "assets";
+
+// Assets sub-tabs
+type AssetsTab = "portfolio" | "tokens" | "nfts";
+
 const LABEL_COLORS: Record<string, string> = {
   "Whale": "bg-purple-500/20 text-purple-300 border-purple-500/30",
   "Mini Whale": "bg-purple-400/20 text-purple-200 border-purple-400/30",
@@ -82,12 +89,21 @@ function shortenAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+function formatPercent(value: number, total: number): string {
+  if (total === 0) return "0%";
+  const percent = (value / total) * 100;
+  if (percent < 1) return "<1%";
+  return `${percent.toFixed(0)}%`;
+}
+
 export default function Home() {
   const [query, setQuery] = useState("");
   const [profile, setProfile] = useState<WalletProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [mainTab, setMainTab] = useState<MainTab>("assets");
+  const [assetsTab, setAssetsTab] = useState<AssetsTab>("portfolio");
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +138,18 @@ export default function Home() {
     }
   };
 
+  // Filter transactions by type
+  const tokenTransfers = profile?.transactions?.filter(tx =>
+    tx.method?.toLowerCase().includes("transfer") ||
+    tx.method?.toLowerCase().includes("swap")
+  ) || [];
+
+  const nftTransfers = profile?.transactions?.filter(tx =>
+    tx.method?.toLowerCase().includes("nft") ||
+    tx.method?.toLowerCase().includes("mint") ||
+    tx.method?.toLowerCase().includes("safe")
+  ) || [];
+
   return (
     <main className="min-h-screen">
       {/* Hero Section */}
@@ -137,7 +165,7 @@ export default function Home() {
               Wallet Profiler
             </h1>
             <p className="text-lg text-gray-400 max-w-xl mx-auto">
-              Discover on-chain activity, token holdings, and wallet insights across 10+ chains
+              Discover on-chain activity, token holdings, and wallet insights across 48+ chains
             </p>
           </div>
 
@@ -182,10 +210,10 @@ export default function Home() {
               vitalik.eth
             </button>
             <button
-              onClick={() => setQuery("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")}
+              onClick={() => setQuery("lcamichael.eth")}
               className="text-sm text-purple-400 hover:text-purple-300 transition mx-2"
             >
-              {shortenAddress("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")}
+              lcamichael.eth
             </button>
           </div>
         </div>
@@ -240,6 +268,26 @@ export default function Home() {
                     ))}
                   </div>
                 )}
+                {/* Social Links inline */}
+                {profile.socialLinks && profile.socialLinks.length > 0 && (
+                  <div className="flex flex-wrap gap-3 mt-3">
+                    {profile.socialLinks.map((link, i) => (
+                      <a
+                        key={i}
+                        href={link.url || "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition"
+                      >
+                        {link.platform === 'twitter' && <Twitter className="w-4 h-4 text-blue-400" />}
+                        {link.platform === 'github' && <Github className="w-4 h-4" />}
+                        {link.platform === 'website' && <Globe className="w-4 h-4 text-green-400" />}
+                        {!['twitter', 'github', 'website'].includes(link.platform) && <Users className="w-4 h-4 text-purple-400" />}
+                        <span>{link.handle}</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex gap-6">
                 <div className="text-center">
@@ -258,157 +306,491 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Grid */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Chain Activity */}
-            <div className="bg-gray-900/50 backdrop-blur border border-white/10 rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Activity className="w-5 h-5 text-purple-400" />
-                <h3 className="text-lg font-semibold text-white">Chain Activity</h3>
+          {/* Main Tabs */}
+          <div className="flex flex-wrap gap-2 mb-6 border-b border-white/10 pb-4">
+            <button
+              onClick={() => setMainTab("transactions")}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                mainTab === "transactions"
+                  ? "bg-white/10 text-white"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" />
+                Transactions
+              </span>
+            </button>
+            <button
+              onClick={() => setMainTab("token-transfers")}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                mainTab === "token-transfers"
+                  ? "bg-white/10 text-white"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Coins className="w-4 h-4" />
+                Token Transfers
+              </span>
+            </button>
+            <button
+              onClick={() => setMainTab("nft-transfers")}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                mainTab === "nft-transfers"
+                  ? "bg-white/10 text-white"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Image className="w-4 h-4" />
+                NFT Transfers
+              </span>
+            </button>
+            <button
+              onClick={() => setMainTab("analytics")}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                mainTab === "analytics"
+                  ? "bg-white/10 text-white"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Analytics
+              </span>
+            </button>
+            <button
+              onClick={() => setMainTab("assets")}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                mainTab === "assets"
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4" />
+                Assets
+              </span>
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          <div className="bg-gray-900/50 backdrop-blur border border-white/10 rounded-2xl p-6">
+
+            {/* Transactions Tab */}
+            {mainTab === "transactions" && (
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <RefreshCw className="w-5 h-5 text-purple-400" />
+                  All Transactions
+                </h3>
+                {profile.transactions && profile.transactions.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="text-left text-gray-400 text-sm border-b border-white/10">
+                          <th className="pb-3 pr-4">Date</th>
+                          <th className="pb-3 pr-4">Method</th>
+                          <th className="pb-3 pr-4">Direction</th>
+                          <th className="pb-3 pr-4">Value</th>
+                          <th className="pb-3 pr-4">To</th>
+                          <th className="pb-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {profile.transactions.map((tx, i) => (
+                          <tr key={i} className="border-b border-white/5 hover:bg-white/5">
+                            <td className="py-3 pr-4 text-gray-400 text-sm">{tx.date}</td>
+                            <td className="py-3 pr-4">
+                              <span className="px-2 py-1 bg-white/10 rounded text-sm text-white">
+                                {tx.method}
+                              </span>
+                            </td>
+                            <td className="py-3 pr-4">
+                              {tx.direction === "IN" ? (
+                                <span className="flex items-center gap-1 text-green-400">
+                                  <ArrowDownLeft className="w-4 h-4" /> IN
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1 text-red-400">
+                                  <ArrowUpRight className="w-4 h-4" /> OUT
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 pr-4 text-white">
+                              {tx.valueEth > 0 ? `${tx.valueEth.toFixed(4)} ETH` : "-"}
+                            </td>
+                            <td className="py-3 pr-4 text-gray-400 font-mono text-sm">
+                              {tx.to ? shortenAddress(tx.to) : "-"}
+                            </td>
+                            <td className="py-3">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                tx.status === "OK" ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                              }`}>
+                                {tx.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No transactions found</p>
+                )}
               </div>
-              {profile.chains.length > 0 ? (
-                <div className="space-y-3">
-                  {profile.chains.map((chain) => (
-                    <div key={chain.chain} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-purple-400" />
-                        <span className="text-white capitalize">{chain.chain}</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-white">{chain.txCount.toLocaleString()} txns</div>
-                        <div className="text-sm text-gray-400">{formatNumber(chain.balanceUsd)}</div>
+            )}
+
+            {/* Token Transfers Tab */}
+            {mainTab === "token-transfers" && (
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Coins className="w-5 h-5 text-yellow-400" />
+                  Token Transfers (ERC-20)
+                </h3>
+                {tokenTransfers.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="text-left text-gray-400 text-sm border-b border-white/10">
+                          <th className="pb-3 pr-4">Date</th>
+                          <th className="pb-3 pr-4">Method</th>
+                          <th className="pb-3 pr-4">Direction</th>
+                          <th className="pb-3 pr-4">Value</th>
+                          <th className="pb-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tokenTransfers.map((tx, i) => (
+                          <tr key={i} className="border-b border-white/5 hover:bg-white/5">
+                            <td className="py-3 pr-4 text-gray-400 text-sm">{tx.date}</td>
+                            <td className="py-3 pr-4">
+                              <span className="px-2 py-1 bg-yellow-500/20 rounded text-sm text-yellow-400">
+                                {tx.method}
+                              </span>
+                            </td>
+                            <td className="py-3 pr-4">
+                              {tx.direction === "IN" ? (
+                                <span className="flex items-center gap-1 text-green-400">
+                                  <ArrowDownLeft className="w-4 h-4" /> IN
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1 text-red-400">
+                                  <ArrowUpRight className="w-4 h-4" /> OUT
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 pr-4 text-white">
+                              {tx.valueEth > 0 ? `${tx.valueEth.toFixed(4)} ETH` : "-"}
+                            </td>
+                            <td className="py-3">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                tx.status === "OK" ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                              }`}>
+                                {tx.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No token transfers found</p>
+                )}
+              </div>
+            )}
+
+            {/* NFT Transfers Tab */}
+            {mainTab === "nft-transfers" && (
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Image className="w-5 h-5 text-pink-400" />
+                  NFT Transfers
+                </h3>
+                {nftTransfers.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="text-left text-gray-400 text-sm border-b border-white/10">
+                          <th className="pb-3 pr-4">Date</th>
+                          <th className="pb-3 pr-4">Method</th>
+                          <th className="pb-3 pr-4">Direction</th>
+                          <th className="pb-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {nftTransfers.map((tx, i) => (
+                          <tr key={i} className="border-b border-white/5 hover:bg-white/5">
+                            <td className="py-3 pr-4 text-gray-400 text-sm">{tx.date}</td>
+                            <td className="py-3 pr-4">
+                              <span className="px-2 py-1 bg-pink-500/20 rounded text-sm text-pink-400">
+                                {tx.method}
+                              </span>
+                            </td>
+                            <td className="py-3 pr-4">
+                              {tx.direction === "IN" ? (
+                                <span className="flex items-center gap-1 text-green-400">
+                                  <ArrowDownLeft className="w-4 h-4" /> IN
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1 text-red-400">
+                                  <ArrowUpRight className="w-4 h-4" /> OUT
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                tx.status === "OK" ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                              }`}>
+                                {tx.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No NFT transfers found</p>
+                )}
+              </div>
+            )}
+
+            {/* Analytics Tab */}
+            {mainTab === "analytics" && (
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-blue-400" />
+                  Wallet Analytics
+                </h3>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Wallet Age */}
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <div className="text-gray-400 text-sm mb-1">Wallet Age</div>
+                    <div className="text-2xl font-bold text-white">
+                      {profile.walletAgeDays > 365
+                        ? `${(profile.walletAgeDays / 365).toFixed(1)} years`
+                        : `${profile.walletAgeDays} days`
+                      }
+                    </div>
+                  </div>
+
+                  {/* Total Transactions */}
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <div className="text-gray-400 text-sm mb-1">Total Transactions</div>
+                    <div className="text-2xl font-bold text-white">{profile.totalTxCount.toLocaleString()}</div>
+                  </div>
+
+                  {/* Active Chains */}
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <div className="text-gray-400 text-sm mb-1">Active Chains</div>
+                    <div className="text-2xl font-bold text-white">{profile.chains.length}</div>
+                  </div>
+
+                  {/* Token Count */}
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <div className="text-gray-400 text-sm mb-1">Token Types Held</div>
+                    <div className="text-2xl font-bold text-white">{profile.tokenCount || profile.tokens?.length || 0}</div>
+                  </div>
+
+                  {/* NFT Count */}
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <div className="text-gray-400 text-sm mb-1">NFT Collections</div>
+                    <div className="text-2xl font-bold text-white">{profile.nftCount || profile.nfts?.length || 0}</div>
+                  </div>
+
+                  {/* DeFi Protocols */}
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <div className="text-gray-400 text-sm mb-1">DeFi Protocols Used</div>
+                    <div className="text-2xl font-bold text-white">{profile.defiProtocols?.length || 0}</div>
+                  </div>
+                </div>
+
+                {/* DeFi Protocols List */}
+                {profile.defiProtocols && profile.defiProtocols.length > 0 && (
+                  <div className="mt-6">
+                    <div className="text-gray-400 text-sm mb-3">DeFi Protocols Interacted</div>
+                    <div className="flex flex-wrap gap-2">
+                      {profile.defiProtocols.map((protocol, i) => (
+                        <span key={i} className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm">
+                          {protocol}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Assets Tab */}
+            {mainTab === "assets" && (
+              <div>
+                {/* Assets Sub-tabs */}
+                <div className="flex gap-2 mb-6">
+                  <button
+                    onClick={() => setAssetsTab("portfolio")}
+                    className={`px-4 py-2 rounded-lg font-medium transition ${
+                      assetsTab === "portfolio"
+                        ? "bg-white/10 text-white"
+                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    Multichain Portfolio
+                  </button>
+                  <button
+                    onClick={() => setAssetsTab("tokens")}
+                    className={`px-4 py-2 rounded-lg font-medium transition ${
+                      assetsTab === "tokens"
+                        ? "bg-white/10 text-white"
+                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    Tokens
+                  </button>
+                  <button
+                    onClick={() => setAssetsTab("nfts")}
+                    className={`px-4 py-2 rounded-lg font-medium transition ${
+                      assetsTab === "nfts"
+                        ? "bg-white/10 text-white"
+                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    NFTs
+                  </button>
+                </div>
+
+                {/* Portfolio View */}
+                {assetsTab === "portfolio" && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-purple-400" />
+                        Multichain Portfolio | {profile.chains.length} Chains
+                      </h3>
+                      <div className="text-sm text-gray-400">
+                        Total: {formatNumber(profile.totalBalanceUsd)}
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500">No chain activity found</p>
-              )}
-            </div>
-
-            {/* Social Links */}
-            <div className="bg-gray-900/50 backdrop-blur border border-white/10 rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Users className="w-5 h-5 text-blue-400" />
-                <h3 className="text-lg font-semibold text-white">Social & Identity</h3>
-              </div>
-              {profile.socialLinks && profile.socialLinks.length > 0 ? (
-                <div className="space-y-3">
-                  {profile.socialLinks.map((link, i) => (
-                    <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                      <div className="flex items-center gap-3">
-                        {link.platform === 'twitter' && <Twitter className="w-4 h-4 text-blue-400" />}
-                        {link.platform === 'github' && <Github className="w-4 h-4 text-gray-400" />}
-                        {link.platform === 'website' && <Globe className="w-4 h-4 text-green-400" />}
-                        {!['twitter', 'github', 'website'].includes(link.platform) && <Users className="w-4 h-4 text-purple-400" />}
-                        <span className="text-white capitalize">{link.platform}</span>
-                      </div>
-                      {link.url ? (
-                        <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 transition text-sm truncate max-w-[200px]">
-                          {link.handle}
-                        </a>
-                      ) : (
-                        <span className="text-gray-400 text-sm truncate max-w-[200px]">{link.handle}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500">No social links found</p>
-              )}
-            </div>
-
-            {/* NFT Holdings */}
-            <div className="bg-gray-900/50 backdrop-blur border border-white/10 rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Image className="w-5 h-5 text-pink-400" />
-                <h3 className="text-lg font-semibold text-white">NFT Collections</h3>
-              </div>
-              {profile.nfts.length > 0 ? (
-                <div className="space-y-3">
-                  {profile.nfts.map((nft, i) => (
-                    <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                      <span className="text-white">{nft.name}</span>
-                      <span className="text-gray-400">{nft.count} items</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500">No NFTs found</p>
-              )}
-            </div>
-
-            {/* Token Holdings */}
-            <div className="bg-gray-900/50 backdrop-blur border border-white/10 rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Coins className="w-5 h-5 text-yellow-400" />
-                <h3 className="text-lg font-semibold text-white">Token Holdings</h3>
-              </div>
-              {profile.tokens && profile.tokens.length > 0 ? (
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {profile.tokens.map((token, i) => (
-                    <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                      <div>
-                        <div className="text-white font-medium">{token.symbol}</div>
-                        <div className="text-sm text-gray-400 truncate max-w-[150px]">{token.name}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-white">{formatBalance(token.balance)}</div>
-                        {token.valueUsd > 0 && (
-                          <div className="text-sm text-gray-400">{formatNumber(token.valueUsd)}</div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500">No tokens found</p>
-              )}
-            </div>
-
-            {/* Recent Transactions */}
-            <div className="bg-gray-900/50 backdrop-blur border border-white/10 rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <ArrowUpRight className="w-5 h-5 text-green-400" />
-                <h3 className="text-lg font-semibold text-white">Recent Transactions</h3>
-              </div>
-              {profile.transactions && profile.transactions.length > 0 ? (
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {profile.transactions.slice(0, 10).map((tx, i) => (
-                    <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                      <div className="flex items-center gap-3">
-                        {tx.direction === "IN" ? (
-                          <ArrowDownLeft className="w-4 h-4 text-green-400" />
-                        ) : (
-                          <ArrowUpRight className="w-4 h-4 text-red-400" />
-                        )}
-                        <div>
-                          <div className="text-white text-sm">{tx.method}</div>
-                          <div className="text-xs text-gray-400">{tx.date}</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        {tx.valueEth > 0 && (
-                          <div className={`text-sm ${tx.direction === "IN" ? "text-green-400" : "text-red-400"}`}>
-                            {tx.direction === "IN" ? "+" : "-"}{tx.valueEth.toFixed(4)} ETH
+                    {profile.chains.length > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                        {profile.chains
+                          .sort((a, b) => b.balanceUsd - a.balanceUsd)
+                          .map((chain) => (
+                          <div
+                            key={chain.chain}
+                            className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition"
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="w-2 h-2 rounded-full bg-purple-400" />
+                              <span className="text-white capitalize font-medium text-sm truncate">
+                                {chain.chain}
+                              </span>
+                              <span className="text-gray-500 text-xs">({chain.txCount})</span>
+                            </div>
+                            <div className="text-white font-bold">
+                              {formatNumber(chain.balanceUsd)}
+                            </div>
+                            <div className="text-gray-500 text-xs">
+                              {formatPercent(chain.balanceUsd, profile.totalBalanceUsd)}
+                            </div>
                           </div>
-                        )}
-                        <div className={`text-xs ${tx.status === "OK" ? "text-gray-400" : "text-red-400"}`}>
-                          {tx.status}
-                        </div>
+                        ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500">No transactions found</p>
-              )}
-            </div>
+                    ) : (
+                      <p className="text-gray-500">No chain activity found</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Tokens View */}
+                {assetsTab === "tokens" && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <Coins className="w-5 h-5 text-yellow-400" />
+                      Token Holdings
+                    </h3>
+                    {profile.tokens && profile.tokens.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="text-left text-gray-400 text-sm border-b border-white/10">
+                              <th className="pb-3 pr-4">Token</th>
+                              <th className="pb-3 pr-4">Balance</th>
+                              <th className="pb-3">Value</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {profile.tokens
+                              .sort((a, b) => b.valueUsd - a.valueUsd)
+                              .map((token, i) => (
+                              <tr key={i} className="border-b border-white/5 hover:bg-white/5">
+                                <td className="py-3 pr-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white text-xs font-bold">
+                                      {token.symbol.slice(0, 2)}
+                                    </div>
+                                    <div>
+                                      <div className="text-white font-medium">{token.symbol}</div>
+                                      <div className="text-gray-400 text-sm truncate max-w-[200px]">{token.name}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-3 pr-4 text-white font-mono">
+                                  {formatBalance(token.balance)}
+                                </td>
+                                <td className="py-3 text-white">
+                                  {token.valueUsd > 0 ? formatNumber(token.valueUsd) : "-"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-gray-500">No tokens found</p>
+                    )}
+                  </div>
+                )}
+
+                {/* NFTs View */}
+                {assetsTab === "nfts" && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <Image className="w-5 h-5 text-pink-400" />
+                      NFT Collections
+                    </h3>
+                    {profile.nfts && profile.nfts.length > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {profile.nfts.map((nft, i) => (
+                          <div
+                            key={i}
+                            className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition"
+                          >
+                            <div className="aspect-square bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-lg mb-3 flex items-center justify-center">
+                              <Image className="w-12 h-12 text-pink-400/50" />
+                            </div>
+                            <div className="text-white font-medium truncate">{nft.name}</div>
+                            {nft.symbol && (
+                              <div className="text-gray-400 text-sm">{nft.symbol}</div>
+                            )}
+                            <div className="text-gray-500 text-sm mt-1">{nft.count} items</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500">No NFTs found</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Footer */}
           <div className="mt-12 text-center text-gray-500 text-sm">
-            Data powered by Blockscout API
+            Data powered by Blockscout API | 48+ chains supported
           </div>
         </div>
       )}
