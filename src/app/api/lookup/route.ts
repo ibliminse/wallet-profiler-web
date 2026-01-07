@@ -146,15 +146,40 @@ function transformProfile(profile: any) {
     balanceUsd: c.balance_usd || 0,
   }));
 
-  const nfts = (onChain.notable_collections || []).map((name: string) => ({
-    name,
-    count: 1,
-  }));
+  // Use detailed NFT holdings if available, otherwise fall back to notable_collections
+  const nfts = profile.nft_holdings?.length > 0
+    ? profile.nft_holdings.map((nft: any) => ({
+        name: nft.name,
+        symbol: nft.symbol,
+        count: nft.count || 1,
+      }))
+    : (onChain.notable_collections || []).map((name: string) => ({
+        name,
+        count: 1,
+      }));
 
   const socialLinks = (profile.social_links || []).map((link: any) => ({
     platform: typeof link.platform === 'string' ? link.platform : link.platform?.value || 'unknown',
     handle: link.handle,
     url: link.url,
+  }));
+
+  // Transform token holdings to frontend format
+  const tokens = (profile.token_holdings || []).map((token: any) => ({
+    symbol: token.symbol,
+    name: token.name,
+    balance: token.balance,
+    valueUsd: token.value_usd || 0,
+  }));
+
+  // Transform transactions to frontend format
+  const transactions = (profile.transactions || []).map((tx: any) => ({
+    date: tx.date,
+    method: tx.method,
+    valueEth: tx.value_eth || 0,
+    to: tx.to,
+    direction: tx.direction,
+    status: tx.status,
   }));
 
   return {
@@ -164,12 +189,12 @@ function transformProfile(profile: any) {
     chains,
     totalBalanceUsd: onChain.total_balance_usd || 0,
     totalTxCount: onChain.tx_count || 0,
-    tokens: [],
+    tokens,
     nfts,
-    transactions: [],
+    transactions,
     socialLinks,
-    tokenCount: onChain.token_count || 0,
-    nftCount: onChain.nft_count || 0,
+    tokenCount: onChain.token_count || tokens.length || 0,
+    nftCount: onChain.nft_count || nfts.length || 0,
     walletAgeDays: onChain.wallet_age_days || 0,
     defiProtocols: onChain.defi_protocols || [],
     firstTxDate: onChain.first_tx_date,
