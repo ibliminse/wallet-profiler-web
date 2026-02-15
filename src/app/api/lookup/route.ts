@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import { join } from "path";
 import type { WalletProfile } from "@/types/wallet";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // External API URL for production (Railway)
 const PROFILER_API_URL = process.env.PROFILER_API_URL;
@@ -66,14 +66,16 @@ async function executeProfiler(
     baseArgs.push("--refresh");
   }
 
-  let command = `profiler lookup ${baseArgs.join(" ")}`;
-  let options: { cwd?: string; maxBuffer: number; timeout: number } = {
+  const execOptions: { cwd?: string; maxBuffer: number; timeout: number } = {
     maxBuffer: 10 * 1024 * 1024,
     timeout: 120000,
   };
 
   try {
-    const { stdout, stderr } = await execAsync(command, options);
+    // execFile passes args as array — no shell, no injection
+    const { stdout, stderr } = await execFileAsync(
+      "profiler", ["lookup", ...baseArgs], execOptions
+    );
 
     if (stderr && !stderr.includes("Looking up")) {
       console.warn("Profiler stderr:", stderr);
@@ -86,11 +88,12 @@ async function executeProfiler(
       console.log("Profiler command not found, trying Python module...");
 
       const profilerPath = getProfilerPath();
-      command = `python3 -m src.main lookup ${baseArgs.join(" ")}`;
-      options.cwd = profilerPath;
+      execOptions.cwd = profilerPath;
 
       try {
-        const { stdout, stderr } = await execAsync(command, options);
+        const { stdout, stderr } = await execFileAsync(
+          "python3", ["-m", "src.main", "lookup", ...baseArgs], execOptions
+        );
 
         if (stderr && !stderr.includes("Looking up")) {
           console.warn("Profiler stderr:", stderr);
